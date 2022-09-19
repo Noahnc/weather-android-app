@@ -1,12 +1,7 @@
 package ch.teko.weather_app;
 
-import java.util.List;
-
-import ch.teko.weather_app.models.AirTemperature;
-import ch.teko.weather_app.models.Result;
 import ch.teko.weather_app.models.WeatherData;
-import ch.teko.weather_app.models.Values;
-import ch.teko.weather_app.models.TimestampCet;
+
 import retrofit2.Call;
 import retrofit2.http.GET;
 
