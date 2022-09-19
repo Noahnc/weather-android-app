@@ -48,7 +48,11 @@ public class APIController {
             public void onResponse(Call<WeatherData> call, Response<WeatherData> response) {
                 int statusCode = response.code();
                 WeatherData weather = response.body();
-                delegate.onSuccess(weather);
+                if (weather.ok) {
+                    delegate.onSuccess(weather);
+                }else {
+                    delegate.onError("API returned a error!");
+                }
 
             }
             @Override
