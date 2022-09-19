@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">weather-app</string>
+    <string name="service_status">Service Status</string>
+    <string name="servicestatus">serviceStatus</string>
+    <string name="temperaturdifferenz">Temperaturdifferenz</string>
+    <string name="service_starten">Service starten</string>
+    <string name="service_stoppen">Service stoppen</string>
 </resources>
