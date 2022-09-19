@@ -14,12 +14,10 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import java.util.concurrent.Executors;
-
 public class WeatherService extends Service {
 
     private final WeatherBinder binder = new WeatherBinder();
-    private final int REPEAT_EVERY = 10000;
+    private FetchThread fetchThread;
 
     @Nullable
     @Override
@@ -29,58 +27,84 @@ public class WeatherService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Intent notificationIntent = new Intent(this, MainActivity.class);
-        PendingIntent pendingIntent =
-                PendingIntent.getActivity(this, 0, notificationIntent,
-                        PendingIntent.FLAG_IMMUTABLE);
-
-        NotificationChannel myChannel = new NotificationChannel("123", "WeatherService", NotificationManager.IMPORTANCE_NONE);
+        // create notification channel
+        final String NOTIFICATION_CHANNEL_ID = "5220";
+        final String NOTIFICATION_CHANNEL_NAME = "WeatherService";
+        NotificationChannel myChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
         NotificationManager service = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
         service.createNotificationChannel(myChannel);
 
-        Notification notification =
-                new Notification.Builder(this, myChannel.getId())
-                        .setContentIntent(pendingIntent)
-                        .build();
+        // setup foreground service notification
+        Notification notification = new Notification.Builder(this, myChannel.getId()).build();
+        startForeground(Integer.parseInt(myChannel.getId()), notification);
 
-
-        startForeground(123, notification);
-
+        // start polling for weather data
         startPolling();
 
         return super.onStartCommand(intent, flags, startId);
     }
 
-    public void startPolling() {
-        Executors.newFixedThreadPool(10).submit((Runnable) () -> {
-            while (true) {
-                try {
-                    Thread.sleep(REPEAT_EVERY);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                // condition
-                showNotification();
-            }
-        });
+    public void stop() {
+        stopSelf();
+        fetchThread.interrupt();
     }
 
+    private void startPolling() {
+        fetchThread = new FetchThread(() -> {
+            // create pendingIntent, if the user opens the application
+            Intent notificationIntent = new Intent(WeatherService.this, MainActivity.class);
+            PendingIntent pendingIntent =
+                    PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent,
+                            PendingIntent.FLAG_IMMUTABLE);
 
-    public void showNotification() {
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(WeatherService.this, "123")
-                .setContentTitle("WeatherService")
-                .setSmallIcon(R.drawable.ic_launcher_foreground)
-                .setContentText("Temperatur wurde überschritten!")
-                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(WeatherService.this, "123")
+                    .setContentTitle("WeatherService")
+                    .setSmallIcon(R.drawable.ic_launcher_foreground)
+                    .setContentText("Temperatur wurde überschritten!")
+                    .setContentIntent(pendingIntent)
+                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
 
-        NotificationManagerCompat notificationManager = NotificationManagerCompat.from(this);
-        notificationManager.notify(312, builder.build());
+            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(WeatherService.this);
+            notificationManager.notify(312, builder.build());
+        });
+        fetchThread.start();
     }
 
     public class WeatherBinder extends Binder {
         WeatherService getService() {
             return WeatherService.this;
         }
+    }
+}
+
+class FetchThread extends Thread {
+
+    private final ThreadResult mDelegate;
+
+    public FetchThread(ThreadResult delegate) {
+        super();
+        mDelegate = delegate;
+    }
+
+    @Override
+    public void run() {
+        super.run();
+
+        while (!isInterrupted()) {
+            try {
+                sleep(3000);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            // fetch data from repo instead of hardcoded 20
+            if (MainActivity.DEGREES > 20) {
+                mDelegate.showNotification();
+            }
+        }
+    }
+
+    interface ThreadResult {
+        void showNotification();
     }
 }

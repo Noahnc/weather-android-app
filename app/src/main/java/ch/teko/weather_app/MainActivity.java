@@ -23,6 +23,7 @@ public class MainActivity extends AppCompatActivity {
     private Intent serviceIntent;
     private TextView serviceStatusTextView;
     private WeatherService service = new WeatherService();
+    public static int DEGREES = 0;
 
     public ServiceConnection service_connection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
@@ -69,6 +70,7 @@ public class MainActivity extends AppCompatActivity {
                 try {
                     String text = editable.toString();
                     int textAsInt = Integer.parseInt(text);
+                    MainActivity.DEGREES = textAsInt;
                     sharedPreferences.edit().putInt(tempSharedPreferences, textAsInt).apply();
                 } catch (Exception ignored) {
 
