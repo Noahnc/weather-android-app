@@ -23,12 +23,10 @@ import retrofit2.converter.gson.GsonConverterFactory;
 public class APIController {
     WeatherAPI apiclient;
     public static final String BASE_URL = "https://tecdottir.herokuapp.com/measurements/";
-    Activity activity;
-    ListView listView;
 
-    public APIController(Activity activity, ListView listview){
-        this.activity = activity;
-        this.listView = listview;
+
+
+    public APIController(){
         Gson gson = new GsonBuilder()
                 .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
                 .create();
@@ -40,7 +38,6 @@ public class APIController {
         apiclient = retrofit.create(WeatherAPI.class);
     }
 
-
     public void getWeatherData(NetworkDelegate delegate){
         Call<WeatherData> call = apiclient.getWeatherData();
         call.enqueue(new Callback<WeatherData>() {
@@ -51,12 +48,13 @@ public class APIController {
                 if (weather.ok) {
                     delegate.onSuccess(weather);
                 }else {
-                    delegate.onError("API returned a error!");
+                    delegate.onError("API returned an error!");
                 }
 
             }
             @Override
             public void onFailure(Call<WeatherData> call, Throwable t) {
+                System.out.println("Error receiving Data from API");
                 delegate.onError("Error fetching data form API.");
             }
         });
