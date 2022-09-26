@@ -6,6 +6,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.Editable;
@@ -41,6 +43,9 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        connectivityManager.registerDefaultNetworkCallback(NetworkHandler.getInstance());
+
         EditText temperatureDifference = (EditText) findViewById(R.id.editTextNumber);
         serviceStatusTextView = (TextView) findViewById(R.id.serviceStatusTextView);
 
@@ -52,7 +57,9 @@ public class MainActivity extends AppCompatActivity {
         // Prefill data
         SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
         int savedTemp = sharedPreferences.getInt(tempSharedPreferences, 0);
-        temperatureDifference.setText("" + savedTemp);
+        temperatureDifference.setText(String.valueOf(savedTemp));
+
+        DEGREES = savedTemp;
 
         temperatureDifference.addTextChangedListener(new TextWatcher() {
             @Override

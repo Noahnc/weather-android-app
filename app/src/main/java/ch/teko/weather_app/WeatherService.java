@@ -1,5 +1,7 @@
 package ch.teko.weather_app;
 
+import static android.app.PendingIntent.FLAG_IMMUTABLE;
+
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -21,6 +23,7 @@ public class WeatherService extends Service {
 
     private final WeatherBinder binder = new WeatherBinder();
     private FetchThread fetchThread;
+    final String NOTIFICATION_CHANNEL_ID = "5220";
 
     @Nullable
     @Override
@@ -31,7 +34,6 @@ public class WeatherService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // create notification channel
-        final String NOTIFICATION_CHANNEL_ID = "5220";
         final String NOTIFICATION_CHANNEL_NAME = "WeatherService";
         NotificationChannel myChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
         NotificationManager service = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
@@ -53,20 +55,17 @@ public class WeatherService extends Service {
     }
 
     private void startPolling() {
-        fetchThread = new FetchThread(() -> {
+        fetchThread = new FetchThread((thresholdTemperature, currentTemperature) -> {
             Log.d(WeatherService.class.getName(), "show notification");
-            // create pendingIntent, if the user opens the application
             Intent notificationIntent = new Intent(WeatherService.this, MainActivity.class);
-            PendingIntent pendingIntent =
-                    PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent,
-                            PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, FLAG_IMMUTABLE);
 
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(WeatherService.this, "123")
-                    .setContentTitle("WeatherService")
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), NOTIFICATION_CHANNEL_ID)
+                    .setContentTitle(getString(R.string.app_name))
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentText("Temperatur wurde überschritten!")
+                    .setContentText("Temperatur von " + thresholdTemperature + " wurde überschritten: " + currentTemperature)
                     .setContentIntent(pendingIntent)
-                    .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+                    .setPriority(NotificationCompat.PRIORITY_HIGH);
 
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(WeatherService.this);
             notificationManager.notify(312, builder.build());
@@ -101,30 +100,37 @@ class FetchThread extends Thread {
                 e.printStackTrace();
             }
 
-            new APIController().getWeatherData(new NetworkDelegate() {
-                @Override
-                public void onSuccess(WeatherData data) {
-                    Log.d(WeatherService.class.getName(), "getWeatherData - onSuccess");
-                    if (!data.result.isEmpty()) {
-                        Log.d(WeatherService.class.getName(), "current temperature is " + data.result.get(0).values.air_temperature.value);
-                        if (data.result.get(0).values.air_temperature.value > MainActivity.DEGREES) {
-                            mDelegate.showNotification();
-                        }
-                    } else {
-                        Log.d(WeatherService.class.getName(), "no temperature result");
-                    }
-                }
+            if (NetworkHandler.getInstance().isAvaliable) {
+                new APIController().getWeatherData(new NetworkDelegate() {
+                    @Override
+                    public void onSuccess(WeatherData data) {
+                        Log.d(WeatherService.class.getName(), "getWeatherData - onSuccess");
+                        if (!data.result.isEmpty()) {
+                            double currentTemperature = data.result.get(0).values.air_temperature.value;
 
-                @Override
-                public void onError(String errorText) {
-                    Log.d(WeatherService.class.getName(), "getWeatherData - onError");
-                    Log.e(WeatherService.class.getName(), errorText);
-                }
-            });
+                            Log.d(WeatherService.class.getName(), "threshold temperature is " + MainActivity.DEGREES);
+                            Log.d(WeatherService.class.getName(), "current temperature is " + currentTemperature);
+
+
+                            if (MainActivity.DEGREES < currentTemperature) {
+                                mDelegate.showNotification(MainActivity.DEGREES, currentTemperature);
+                            }
+                        } else {
+                            Log.d(WeatherService.class.getName(), "no temperature result");
+                        }
+                    }
+
+                    @Override
+                    public void onError(String errorText) {
+                        Log.d(WeatherService.class.getName(), "getWeatherData - onError");
+                        Log.e(WeatherService.class.getName(), errorText);
+                    }
+                });
+            }
         }
     }
 
     interface ThreadResult {
-        void showNotification();
+        void showNotification(double thresholdTemperature, double currentTemperature);
     }
 }
