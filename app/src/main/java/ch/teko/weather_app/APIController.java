@@ -1,18 +1,11 @@
 package ch.teko.weather_app;
 
-import android.app.Activity;
-
-import android.widget.ListView;
+import androidx.annotation.NonNull;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-
-import java.util.ArrayList;
-import java.util.List;
-
 import ch.teko.weather_app.models.WeatherData;
-
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
@@ -21,15 +14,11 @@ import retrofit2.converter.gson.GsonConverterFactory;
 
 
 public class APIController {
-    WeatherAPI apiclient;
-    public static final String BASE_URL = "https://tecdottir.herokuapp.com/measurements/";
+    private final WeatherAPI apiclient;
+    public static final String BASE_URL = "https://tecdottir.herokuapp.com";
 
-
-
-    public APIController(){
-        Gson gson = new GsonBuilder()
-                .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-                .create();
+    public APIController() {
+        Gson gson = new GsonBuilder().create();
         Retrofit retrofit = new Retrofit.Builder()
                 .baseUrl(BASE_URL)
                 .addConverterFactory(GsonConverterFactory.create(gson))
@@ -38,23 +27,21 @@ public class APIController {
         apiclient = retrofit.create(WeatherAPI.class);
     }
 
-    public void getWeatherData(NetworkDelegate delegate){
+    public void getWeatherData(NetworkDelegate delegate) {
         Call<WeatherData> call = apiclient.getWeatherData();
         call.enqueue(new Callback<WeatherData>() {
             @Override
-            public void onResponse(Call<WeatherData> call, Response<WeatherData> response) {
-                int statusCode = response.code();
+            public void onResponse(@NonNull Call<WeatherData> call, @NonNull Response<WeatherData> response) {
                 WeatherData weather = response.body();
-                if (weather.ok) {
+                if (weather != null && weather.ok) {
                     delegate.onSuccess(weather);
-                }else {
+                } else {
                     delegate.onError("API returned an error!");
                 }
-
             }
+
             @Override
             public void onFailure(Call<WeatherData> call, Throwable t) {
-                System.out.println("Error receiving Data from API");
                 delegate.onError("Error fetching data form API.");
             }
         });

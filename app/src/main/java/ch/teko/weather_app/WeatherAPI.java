@@ -10,7 +10,7 @@ import java.util.List;
 
 public interface WeatherAPI {
 
-    @GET("tiefenbrunnen?startDate=2022-01-01&endDate=2022-12-01&sort=timestamp_cet%20desc&limit=3&offset=0")
+    @GET("measurements/tiefenbrunnen?startDate=2022-01-01&endDate=2022-12-01&sort=timestamp_cet%20desc&limit=3&offset=0")
     Call<WeatherData> getWeatherData();
 
 }

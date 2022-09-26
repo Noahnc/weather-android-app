@@ -9,10 +9,13 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Binder;
 import android.os.IBinder;
+import android.util.Log;
 
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
+
+import ch.teko.weather_app.models.WeatherData;
 
 public class WeatherService extends Service {
 
@@ -51,6 +54,7 @@ public class WeatherService extends Service {
 
     private void startPolling() {
         fetchThread = new FetchThread(() -> {
+            Log.d(WeatherService.class.getName(), "show notification");
             // create pendingIntent, if the user opens the application
             Intent notificationIntent = new Intent(WeatherService.this, MainActivity.class);
             PendingIntent pendingIntent =
@@ -97,10 +101,26 @@ class FetchThread extends Thread {
                 e.printStackTrace();
             }
 
-            // fetch data from repo instead of hardcoded 20
-            if (MainActivity.DEGREES > 20) {
-                mDelegate.showNotification();
-            }
+            new APIController().getWeatherData(new NetworkDelegate() {
+                @Override
+                public void onSuccess(WeatherData data) {
+                    Log.d(WeatherService.class.getName(), "getWeatherData - onSuccess");
+                    if (!data.result.isEmpty()) {
+                        Log.d(WeatherService.class.getName(), "current temperature is " + data.result.get(0).values.air_temperature.value);
+                        if (data.result.get(0).values.air_temperature.value > MainActivity.DEGREES) {
+                            mDelegate.showNotification();
+                        }
+                    } else {
+                        Log.d(WeatherService.class.getName(), "no temperature result");
+                    }
+                }
+
+                @Override
+                public void onError(String errorText) {
+                    Log.d(WeatherService.class.getName(), "getWeatherData - onError");
+                    Log.e(WeatherService.class.getName(), errorText);
+                }
+            });
         }
     }
 
