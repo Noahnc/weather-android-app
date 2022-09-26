@@ -1,3 +1,5 @@
+# Android Wetter Benachrichtigungs App
+
 # introduction
 Die Android-App in dieser Repository kann den Anwender in regelmässigen Abständen über eine Temperatur Unter- / Überschreitung informieren.
 Der Nutzer kann dazu in der App eine Temperatur eintragen, die im Local Storage des Geräts gespeichert wird. Anschliessen kann ein Background-Service gestartet werden.
@@ -6,7 +8,6 @@ Der Service prüft in einem Intervall von einer Minute die Wetterstation "Tiefen
 # weather-android-app
 a simple android client to check for the current temperature at Zürich
 Tiefenbrunnen and send local push notifications above a predefined threshold
-# Android Wetter Benachrichtigungs App
 
 # how to use
 1. open the project at its root with android studio
