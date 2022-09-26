@@ -121,7 +121,7 @@ public class WeatherService extends Service {
 
                                 /**
                                  * as discussed on 26.09, we are not comparing the temperature
-                                 * difference here for a better testability
+                                 * difference here for better testability
                                  *
                                  * if we would like to do it like this, the fetched temperature would be
                                  * stored in the thread and compared against the new value on next polling
@@ -148,7 +148,7 @@ public class WeatherService extends Service {
                 // wait for 60 seconds
 
                 try {
-                    sleep(3000);
+                    sleep(60000);
                 } catch (InterruptedException e) {
                     Log.e(WeatherService.class.getName(), "interrupted");
                 }
