@@ -1,4 +1,4 @@
-package ch.teko.weather_app;
+package ch.teko.weather_app.network;
 
 import android.net.ConnectivityManager;
 import android.net.Network;

@@ -1,11 +1,11 @@
-package ch.teko.weather_app;
+package ch.teko.weather_app.api;
 
 import androidx.annotation.NonNull;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
-import ch.teko.weather_app.models.WeatherData;
+import ch.teko.weather_app.api.model.WeatherData;
 import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
