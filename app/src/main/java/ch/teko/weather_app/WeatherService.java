@@ -22,7 +22,9 @@ import ch.teko.weather_app.models.WeatherData;
 public class WeatherService extends Service {
 
     private final WeatherBinder binder = new WeatherBinder();
-    private FetchThread fetchThread;
+    private PollingThread fetchThread;
+
+    final String NOTIFICATION_CHANNEL_NAME = "WeatherService";
     final String NOTIFICATION_CHANNEL_ID = "5220";
 
     @Nullable
@@ -34,7 +36,6 @@ public class WeatherService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         // create notification channel
-        final String NOTIFICATION_CHANNEL_NAME = "WeatherService";
         NotificationChannel myChannel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, NOTIFICATION_CHANNEL_NAME, NotificationManager.IMPORTANCE_DEFAULT);
         NotificationManager service = ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE));
         service.createNotificationChannel(myChannel);
@@ -55,18 +56,17 @@ public class WeatherService extends Service {
     }
 
     private void startPolling() {
-        fetchThread = new FetchThread((thresholdTemperature, currentTemperature) -> {
-            Log.d(WeatherService.class.getName(), "show notification");
+        fetchThread = new PollingThread((text) -> {
+            Log.d(WeatherService.class.getName(), "show push notification");
             Intent notificationIntent = new Intent(WeatherService.this, MainActivity.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, FLAG_IMMUTABLE);
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), NOTIFICATION_CHANNEL_ID)
                     .setContentTitle(getString(R.string.app_name))
                     .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentText("Temperatur von " + thresholdTemperature + " wurde überschritten: " + currentTemperature)
+                    .setContentText(text)
                     .setContentIntent(pendingIntent)
                     .setPriority(NotificationCompat.PRIORITY_HIGH);
-
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(WeatherService.this);
             notificationManager.notify(312, builder.build());
         });
@@ -80,13 +80,12 @@ public class WeatherService extends Service {
     }
 }
 
-class FetchThread extends Thread {
+class PollingThread extends Thread {
 
-    private final ThreadResult mDelegate;
+    private final ThreadResult mPollingDelegate;
 
-    public FetchThread(ThreadResult delegate) {
-        super();
-        mDelegate = delegate;
+    public PollingThread(ThreadResult delegate) {
+        mPollingDelegate = delegate;
     }
 
     @Override
@@ -97,7 +96,7 @@ class FetchThread extends Thread {
             try {
                 sleep(3000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                Log.e(WeatherService.class.getName(), e.getMessage());
             }
 
             if (NetworkHandler.getInstance().isAvaliable) {
@@ -120,7 +119,9 @@ class FetchThread extends Thread {
                              * (calculating in the temperature threshold difference)
                              */
                             if (MainActivity.DEGREES < currentTemperature) {
-                                mDelegate.showNotification(MainActivity.DEGREES, currentTemperature);
+                                mPollingDelegate.showNotification("Temperatur von " + MainActivity.DEGREES + " wurde überschritten: " + currentTemperature);
+                            } else if (MainActivity.DEGREES > currentTemperature) {
+                                mPollingDelegate.showNotification("Temperatur von " + MainActivity.DEGREES + " wurde unterschritten: " + currentTemperature);
                             }
                         } else {
                             Log.d(WeatherService.class.getName(), "no temperature result");
@@ -138,6 +139,6 @@ class FetchThread extends Thread {
     }
 
     interface ThreadResult {
-        void showNotification(double thresholdTemperature, double currentTemperature);
+        void showNotification(String notificationText);
     }
 }
