@@ -111,7 +111,14 @@ class FetchThread extends Thread {
                             Log.d(WeatherService.class.getName(), "threshold temperature is " + MainActivity.DEGREES);
                             Log.d(WeatherService.class.getName(), "current temperature is " + currentTemperature);
 
-
+                            /**
+                             * as discussed on 26.09, we are not comparing the temperature
+                             * difference here for a better testability
+                             *
+                             * if we would like to do it like this, the fetched temperature would be
+                             * stored in the thread and compared against the new value on next polling
+                             * (calculating in the temperature threshold difference)
+                             */
                             if (MainActivity.DEGREES < currentTemperature) {
                                 mDelegate.showNotification(MainActivity.DEGREES, currentTemperature);
                             }
