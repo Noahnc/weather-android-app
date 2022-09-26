@@ -21,13 +21,13 @@ import java.util.UUID;
 
 import ch.teko.weather_app.api.APIController;
 import ch.teko.weather_app.api.NetworkDelegate;
-import ch.teko.weather_app.helper.NetworkHandler;
 import ch.teko.weather_app.api.model.WeatherData;
+import ch.teko.weather_app.network.NetworkHandler;
 
 public class WeatherService extends Service {
 
     private final WeatherBinder binder = new WeatherBinder();
-    private PollingThread fetchThread;
+    private static PollingThread fetchThread;
 
     final String NOTIFICATION_CHANNEL_NAME = "WeatherService";
     final String NOTIFICATION_CHANNEL_ID = "5220";
@@ -57,27 +57,31 @@ public class WeatherService extends Service {
 
     public void stop() {
         stopSelf();
-        if(fetchThread != null){
-            fetchThread.interrupt();
+        stopForeground(true);
+        if (fetchThread != null) {
+            fetchThread.stopPolling();
+            fetchThread = null;
         }
     }
 
     private void startPolling() {
-        fetchThread = new PollingThread((text) -> {
-            Log.d(WeatherService.class.getName(), "show push notification");
-            Intent notificationIntent = new Intent(WeatherService.this, WeatherActivity.class);
-            PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, FLAG_IMMUTABLE);
+        if (fetchThread == null) {
+            fetchThread = new PollingThread((text) -> {
+                Log.d(WeatherService.class.getName(), "show push notification");
+                Intent notificationIntent = new Intent(WeatherService.this, WeatherActivity.class);
+                PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, FLAG_IMMUTABLE);
 
-            NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), NOTIFICATION_CHANNEL_ID)
-                    .setContentTitle(getString(R.string.app_name))
-                    .setSmallIcon(R.drawable.ic_launcher_foreground)
-                    .setContentText(text)
-                    .setContentIntent(pendingIntent)
-                    .setPriority(NotificationCompat.PRIORITY_HIGH);
-            NotificationManagerCompat notificationManager = NotificationManagerCompat.from(WeatherService.this);
-            notificationManager.notify(UUID.randomUUID().hashCode(), builder.build());
-        });
-        fetchThread.start();
+                NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), NOTIFICATION_CHANNEL_ID)
+                        .setContentTitle(getString(R.string.app_name))
+                        .setSmallIcon(R.drawable.ic_launcher_foreground)
+                        .setContentText(text)
+                        .setContentIntent(pendingIntent)
+                        .setPriority(NotificationCompat.PRIORITY_HIGH);
+                NotificationManagerCompat notificationManager = NotificationManagerCompat.from(WeatherService.this);
+                notificationManager.notify(UUID.randomUUID().hashCode(), builder.build());
+            });
+            fetchThread.start();
+        }
     }
 
     public class WeatherBinder extends Binder {
@@ -85,67 +89,74 @@ public class WeatherService extends Service {
             return WeatherService.this;
         }
     }
-}
 
-class PollingThread extends Thread {
+    private static class PollingThread extends Thread {
 
-    private final PollingResult mPollingDelegate;
+        private final PollingResult mPollingDelegate;
+        private Boolean active = true;
 
-    public PollingThread(PollingResult delegate) {
-        mPollingDelegate = delegate;
-    }
+        public PollingThread(PollingResult delegate) {
+            mPollingDelegate = delegate;
+        }
 
-    @Override
-    public void run() {
-        super.run();
+        private void stopPolling() {
+            active = false;
+        }
 
-        while (!isInterrupted()) {
-            try {
-                sleep(3000);
-            } catch (InterruptedException e) {
-                Log.e(WeatherService.class.getName(), e.getMessage());
-            }
+        @Override
+        public void run() {
+            super.run();
 
-            if (NetworkHandler.getInstance().isAvaliable) {
-                new APIController().getWeatherData(new NetworkDelegate() {
-                    @Override
-                    public void onSuccess(WeatherData data) {
-                        Log.d(WeatherService.class.getName(), "getWeatherData - onSuccess");
-                        if (!data.result.isEmpty()) {
-                            double currentTemperature = data.result.get(0).values.air_temperature.value;
+            while (active) {
+                if (NetworkHandler.getInstance().isAvaliable) {
+                    new APIController().getWeatherData(new NetworkDelegate() {
+                        @Override
+                        public void onSuccess(WeatherData data) {
+                            Log.d(WeatherService.class.getName(), "getWeatherData - onSuccess");
+                            if (!data.result.isEmpty()) {
+                                double currentTemperature = data.result.get(0).values.air_temperature.value;
 
-                            Log.d(WeatherService.class.getName(), "threshold temperature is " + WeatherActivity.DEGREE_THRESHOLD);
-                            Log.d(WeatherService.class.getName(), "current temperature is " + currentTemperature);
+                                Log.d(WeatherService.class.getName(), "threshold temperature is " + WeatherActivity.DEGREE_THRESHOLD);
+                                Log.d(WeatherService.class.getName(), "current temperature is " + currentTemperature);
 
-                            /**
-                             * as discussed on 26.09, we are not comparing the temperature
-                             * difference here for a better testability
-                             *
-                             * if we would like to do it like this, the fetched temperature would be
-                             * stored in the thread and compared against the new value on next polling
-                             * (calculating in the temperature threshold difference)
-                             */
-                            if (WeatherActivity.DEGREE_THRESHOLD < currentTemperature) {
-                                mPollingDelegate.showNotification("Temperatur von " + WeatherActivity.DEGREE_THRESHOLD + " wurde überschritten: " + currentTemperature);
-                            } else if (WeatherActivity.DEGREE_THRESHOLD > currentTemperature) {
-                                mPollingDelegate.showNotification("Temperatur von " + WeatherActivity.DEGREE_THRESHOLD + " wurde unterschritten: " + currentTemperature);
+                                /**
+                                 * as discussed on 26.09, we are not comparing the temperature
+                                 * difference here for a better testability
+                                 *
+                                 * if we would like to do it like this, the fetched temperature would be
+                                 * stored in the thread and compared against the new value on next polling
+                                 * (calculating in the temperature threshold difference)
+                                 */
+                                if (WeatherActivity.DEGREE_THRESHOLD < currentTemperature) {
+                                    mPollingDelegate.showNotification("Temperatur von " + WeatherActivity.DEGREE_THRESHOLD + " wurde überschritten: " + currentTemperature);
+                                } else if (WeatherActivity.DEGREE_THRESHOLD > currentTemperature) {
+                                    mPollingDelegate.showNotification("Temperatur von " + WeatherActivity.DEGREE_THRESHOLD + " wurde unterschritten: " + currentTemperature);
+                                }
+                            } else {
+                                Log.d(WeatherService.class.getName(), "no temperature result");
                             }
-                        } else {
-                            Log.d(WeatherService.class.getName(), "no temperature result");
                         }
-                    }
 
-                    @Override
-                    public void onError(String errorText) {
-                        Log.d(WeatherService.class.getName(), "getWeatherData - onError");
-                        Log.e(WeatherService.class.getName(), errorText);
-                    }
-                });
+                        @Override
+                        public void onError(String errorText) {
+                            Log.d(WeatherService.class.getName(), "getWeatherData - onError");
+                            Log.e(WeatherService.class.getName(), errorText);
+                        }
+                    });
+                }
+
+                // wait for 60 seconds
+
+                try {
+                    sleep(3000);
+                } catch (InterruptedException e) {
+                    Log.e(WeatherService.class.getName(), "interrupted");
+                }
             }
         }
-    }
 
-    interface PollingResult {
-        void showNotification(String notificationText);
+        interface PollingResult {
+            void showNotification(String notificationText);
+        }
     }
 }

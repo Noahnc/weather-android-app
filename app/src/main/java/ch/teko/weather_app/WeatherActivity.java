@@ -17,7 +17,7 @@ import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-import ch.teko.weather_app.helper.NetworkHandler;
+import ch.teko.weather_app.network.NetworkHandler;
 
 public class WeatherActivity extends AppCompatActivity {
 
@@ -77,7 +77,7 @@ public class WeatherActivity extends AppCompatActivity {
                     WeatherActivity.DEGREE_THRESHOLD = input;
                     getPreferences(MODE_PRIVATE).edit().putInt(TEMPERATURE_KEY, input).apply();
                 } catch (Exception ex) {
-                    Log.e(WeatherActivity.class.getName(), ex.getMessage());
+                    Log.e(WeatherActivity.class.getName(), "unexpected error");
                 }
             }
         });
