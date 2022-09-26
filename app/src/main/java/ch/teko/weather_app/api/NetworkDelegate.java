@@ -1,6 +1,6 @@
-package ch.teko.weather_app;
+package ch.teko.weather_app.api;
 
-import ch.teko.weather_app.models.WeatherData;
+import ch.teko.weather_app.api.model.WeatherData;
 
 public interface NetworkDelegate {
 

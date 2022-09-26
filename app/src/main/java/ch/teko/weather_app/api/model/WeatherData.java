@@ -1,4 +1,4 @@
-package ch.teko.weather_app.models;
+package ch.teko.weather_app.api.model;
 
 import com.google.gson.annotations.SerializedName;
 import java.util.ArrayList;

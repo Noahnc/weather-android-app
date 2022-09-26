@@ -17,7 +17,12 @@ import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.NotificationManagerCompat;
 
-import ch.teko.weather_app.models.WeatherData;
+import java.util.UUID;
+
+import ch.teko.weather_app.api.APIController;
+import ch.teko.weather_app.api.NetworkDelegate;
+import ch.teko.weather_app.helper.NetworkHandler;
+import ch.teko.weather_app.api.model.WeatherData;
 
 public class WeatherService extends Service {
 
@@ -52,13 +57,15 @@ public class WeatherService extends Service {
 
     public void stop() {
         stopSelf();
-        fetchThread.interrupt();
+        if(fetchThread != null){
+            fetchThread.interrupt();
+        }
     }
 
     private void startPolling() {
         fetchThread = new PollingThread((text) -> {
             Log.d(WeatherService.class.getName(), "show push notification");
-            Intent notificationIntent = new Intent(WeatherService.this, MainActivity.class);
+            Intent notificationIntent = new Intent(WeatherService.this, WeatherActivity.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(getApplicationContext(), 0, notificationIntent, FLAG_IMMUTABLE);
 
             NotificationCompat.Builder builder = new NotificationCompat.Builder(getApplicationContext(), NOTIFICATION_CHANNEL_ID)
@@ -68,7 +75,7 @@ public class WeatherService extends Service {
                     .setContentIntent(pendingIntent)
                     .setPriority(NotificationCompat.PRIORITY_HIGH);
             NotificationManagerCompat notificationManager = NotificationManagerCompat.from(WeatherService.this);
-            notificationManager.notify(312, builder.build());
+            notificationManager.notify(UUID.randomUUID().hashCode(), builder.build());
         });
         fetchThread.start();
     }
@@ -82,9 +89,9 @@ public class WeatherService extends Service {
 
 class PollingThread extends Thread {
 
-    private final ThreadResult mPollingDelegate;
+    private final PollingResult mPollingDelegate;
 
-    public PollingThread(ThreadResult delegate) {
+    public PollingThread(PollingResult delegate) {
         mPollingDelegate = delegate;
     }
 
@@ -107,7 +114,7 @@ class PollingThread extends Thread {
                         if (!data.result.isEmpty()) {
                             double currentTemperature = data.result.get(0).values.air_temperature.value;
 
-                            Log.d(WeatherService.class.getName(), "threshold temperature is " + MainActivity.DEGREES);
+                            Log.d(WeatherService.class.getName(), "threshold temperature is " + WeatherActivity.DEGREE_THRESHOLD);
                             Log.d(WeatherService.class.getName(), "current temperature is " + currentTemperature);
 
                             /**
@@ -118,10 +125,10 @@ class PollingThread extends Thread {
                              * stored in the thread and compared against the new value on next polling
                              * (calculating in the temperature threshold difference)
                              */
-                            if (MainActivity.DEGREES < currentTemperature) {
-                                mPollingDelegate.showNotification("Temperatur von " + MainActivity.DEGREES + " wurde überschritten: " + currentTemperature);
-                            } else if (MainActivity.DEGREES > currentTemperature) {
-                                mPollingDelegate.showNotification("Temperatur von " + MainActivity.DEGREES + " wurde unterschritten: " + currentTemperature);
+                            if (WeatherActivity.DEGREE_THRESHOLD < currentTemperature) {
+                                mPollingDelegate.showNotification("Temperatur von " + WeatherActivity.DEGREE_THRESHOLD + " wurde überschritten: " + currentTemperature);
+                            } else if (WeatherActivity.DEGREE_THRESHOLD > currentTemperature) {
+                                mPollingDelegate.showNotification("Temperatur von " + WeatherActivity.DEGREE_THRESHOLD + " wurde unterschritten: " + currentTemperature);
                             }
                         } else {
                             Log.d(WeatherService.class.getName(), "no temperature result");
@@ -138,7 +145,7 @@ class PollingThread extends Thread {
         }
     }
 
-    interface ThreadResult {
+    interface PollingResult {
         void showNotification(String notificationText);
     }
 }

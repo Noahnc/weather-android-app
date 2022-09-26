@@ -5,27 +5,28 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
-import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
-import android.net.NetworkRequest;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+import ch.teko.weather_app.helper.NetworkHandler;
 
-    private static final String tempSharedPreferences = "savedTemp";
+public class WeatherActivity extends AppCompatActivity {
+
+    private static final String TEMPERATURE_KEY = "temperature_threshold";
 
     private Intent serviceIntent;
-    private TextView serviceStatusTextView;
     private WeatherService service = new WeatherService();
-    public static int DEGREES = 0;
+
+    public static int DEGREE_THRESHOLD = 0;
 
     public ServiceConnection service_connection = new ServiceConnection() {
         public void onServiceConnected(ComponentName className, IBinder binder) {
@@ -37,50 +38,46 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // register network listener
         ConnectivityManager connectivityManager = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
         connectivityManager.registerDefaultNetworkCallback(NetworkHandler.getInstance());
 
-        EditText temperatureDifference = (EditText) findViewById(R.id.editTextNumber);
-        serviceStatusTextView = (TextView) findViewById(R.id.serviceStatusTextView);
-
-        // Service
+        // create service
         serviceIntent = new Intent(this, WeatherService.class);
         bindService(serviceIntent, service_connection, Context.BIND_AUTO_CREATE);
         updateServiceStatus();
 
-        // Prefill data
-        SharedPreferences sharedPreferences = getPreferences(MODE_PRIVATE);
-        int savedTemp = sharedPreferences.getInt(tempSharedPreferences, 0);
-        temperatureDifference.setText(String.valueOf(savedTemp));
+        // prefill data
+        int degreeThreshold = getPreferences(MODE_PRIVATE).getInt(TEMPERATURE_KEY, 0);
+        EditText inputTemperature = (EditText) findViewById(R.id.editTextNumber);
+        inputTemperature.setText(String.valueOf(degreeThreshold));
 
-        DEGREES = savedTemp;
+        DEGREE_THRESHOLD = degreeThreshold;
 
-        temperatureDifference.addTextChangedListener(new TextWatcher() {
+        inputTemperature.addTextChangedListener(new TextWatcher() {
             @Override
             public void beforeTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
+                //do nothing
             }
 
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
-
+                //do nothing
             }
 
             @Override
             public void afterTextChanged(Editable editable) {
                 try {
-                    String text = editable.toString();
-                    int textAsInt = Integer.parseInt(text);
-                    MainActivity.DEGREES = textAsInt;
-                    sharedPreferences.edit().putInt(tempSharedPreferences, textAsInt).apply();
-                } catch (Exception ignored) {
-
+                    int input = Integer.parseInt(editable.toString());
+                    WeatherActivity.DEGREE_THRESHOLD = input;
+                    getPreferences(MODE_PRIVATE).edit().putInt(TEMPERATURE_KEY, input).apply();
+                } catch (Exception ex) {
+                    Log.e(WeatherActivity.class.getName(), ex.getMessage());
                 }
             }
         });
@@ -104,23 +101,21 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void onClickStopService(View view) {
-        if (serviceIntent == null) {
-            return;
+        if (serviceIntent != null) {
+            service.stop();
+            updateServiceStatus();
         }
-
-        service.stop();
-        updateServiceStatus();
     }
 
     private void updateServiceStatus() {
+        TextView serviceStatusTextView = (TextView) findViewById(R.id.serviceStatusTextView);
         ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
             if (WeatherService.class.getName().equals(service.service.getClassName()) && service.started) {
-                serviceStatusTextView.setText("Running");
+                serviceStatusTextView.setText(getText(R.string.service_is_running));
                 return;
             }
         }
-
-        serviceStatusTextView.setText("Stopped");
+        serviceStatusTextView.setText(getText(R.string.service_is_not_running));
     }
 }
